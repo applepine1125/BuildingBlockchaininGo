@@ -7,9 +7,7 @@ import (
 	"strconv"
 )
 
-type CLI struct {
-	bc *Blockchain
-}
+type CLI struct{}
 
 func (cli *CLI) printUsage() {
 	fmt.Println("Usage:")
@@ -34,15 +32,22 @@ func (cli *CLI) Run() {
 	var err error
 
 	cli.validateArgs()
-	addBlockCmd := flag.NewFlagSet("addblock", flag.ExitOnError)
+	createBlockchainCmd := flag.NewFlagSet("createblockchain", flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
-	addBlockData := addBlockCmd.String("data", "", "Block data")
+
+	createBlockchainAddress := createBlockchainCmd.String("address", "", "The address to send genesis block reward to")
 
 	switch os.Args[1] {
-	case "addblock":
-		err = addBlockCmd.Parse(os.Args[2:])
+	case "createblockchain":
+		err := createBlockchainCmd.Parse(os.Args[2:])
+		if err != nil {
+			panic(err)
+		}
 	case "printchain":
 		err = printChainCmd.Parse(os.Args[2:])
+		if err != nil {
+			panic(err)
+		}
 	default:
 		cli.printUsage()
 		os.Exit(1)
@@ -50,12 +55,13 @@ func (cli *CLI) Run() {
 	if err != nil {
 		panic(err)
 	}
-	if addBlockCmd.Parsed() {
-		if *addBlockData == "" {
-			addBlockCmd.Usage()
+
+	if createBlockchainCmd.Parsed() {
+		if *createBlockchainAddress == "" {
+			createBlockchainCmd.Usage()
 			os.Exit(1)
 		}
-		cli.addBlock(*addBlockData)
+		cli.createBlockchain(*createBlockchainAddress)
 	}
 
 	if printChainCmd.Parsed() {
@@ -63,19 +69,21 @@ func (cli *CLI) Run() {
 	}
 }
 
-func (cli *CLI) addBlock(data string) {
-	cli.bc.AddBlock(data)
-	fmt.Println("Success!")
+func (cli *CLI) createBlockchain(address string) {
+	bc := CreateBlockchain(address)
+	defer bc.db.Close()
+	fmt.Println("Done!")
 }
 
 func (cli *CLI) printChain() {
-	bci := cli.bc.Iterator()
+	bc := NewBlockchain()
+
+	bci := bc.Iterator()
 
 	for {
 		block := bci.Next()
 
 		fmt.Printf("Prev. hash: %x\n", block.PrevBlockHash)
-		fmt.Printf("Data: %s\n", block.Data)
 		fmt.Printf("Hash: %x\n", block.Hash)
 		pow := NewProofOfWork(block)
 		fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))

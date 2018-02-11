@@ -3,9 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/binary"
 	"fmt"
-	"log"
 	"math"
 	"math/big"
 )
@@ -33,7 +31,7 @@ func (pow *ProofOfWork) prepareData(nonce int) []byte {
 	data := bytes.Join(
 		[][]byte{
 			pow.block.PrevBlockHash,
-			pow.block.Data,
+			pow.block.HashTransactions(),
 			IntToHex(pow.block.Timestamp),
 			IntToHex(int64(targetBits)),
 			IntToHex(int64(nonce)),
@@ -49,7 +47,6 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 	var hash [32]byte
 	nonce := 0
 
-	fmt.Printf("Mining the block containing \"%s\"\n", pow.block.Data)
 	for nonce < maxNonce {
 		data := pow.prepareData(nonce)
 		hash = sha256.Sum256(data)
@@ -77,14 +74,4 @@ func (pow *ProofOfWork) Validate() bool {
 	isValid := hashInt.Cmp(pow.target) == -1
 
 	return isValid
-}
-
-func IntToHex(num int64) []byte {
-	buff := new(bytes.Buffer)
-	err := binary.Write(buff, binary.BigEndian, num)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	return buff.Bytes()
 }
